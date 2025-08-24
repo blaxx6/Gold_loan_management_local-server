@@ -1,11 +1,13 @@
 import React from 'react';
 
+// Defines the dimensions for the icons based on the selected size.
 const sizeStyles = {
   small: { width: 18, height: 18 },
   medium: { width: 28, height: 28 },
   large: { width: 38, height: 38 }
 };
 
+// Data for the size options, including labels and icons.
 const sizeOptions = [
   { value: 'small', label: 'Small', icon: '🔵' },
   { value: 'medium', label: 'Medium', icon: '🔵' },
@@ -23,7 +25,8 @@ const ImageSizeControl = ({ currentSize, onSizeChange }) => (
       width: '100%'
     }}
   >
-    <label className="control-label" style={{ fontWeight: 600, marginBottom: 4 }}>
+    {/* Label for the control, styled for a dark theme */}
+    <label className="control-label" style={{ fontWeight: 600, marginBottom: 4, color: '#eee' }}>
       Image Size:
     </label>
     <div
@@ -34,6 +37,7 @@ const ImageSizeControl = ({ currentSize, onSizeChange }) => (
         flexWrap: 'wrap'
       }}
     >
+      {/* Map through the size options to create a button for each */}
       {sizeOptions.map(option => (
         <button
           key={option.value}
@@ -41,9 +45,11 @@ const ImageSizeControl = ({ currentSize, onSizeChange }) => (
           onClick={() => onSizeChange(option.value)}
           title={option.label}
           style={{
-            border: currentSize === option.value ? '2px solid #007bff' : '1px solid #ccc',
-            background: currentSize === option.value ? '#e6f0ff' : '#fff',
-            color: '#222',
+            // --- STYLES CORRECTED FOR DARK THEME & TRANSPARENCY ---
+            background: currentSize === option.value ? 'rgba(0, 123, 255, 0.2)' : 'transparent',
+            border: currentSize === option.value ? '2px solid #007bff' : '1px solid #555',
+            color: '#fff', // White text for readability on dark backgrounds
+            // --- END OF CORRECTIONS ---
             borderRadius: 8,
             padding: '8px 16px',
             minWidth: 80,
@@ -51,11 +57,12 @@ const ImageSizeControl = ({ currentSize, onSizeChange }) => (
             alignItems: 'center',
             gap: 8,
             fontWeight: currentSize === option.value ? 700 : 400,
-            boxShadow: currentSize === option.value ? '0 2px 8px rgba(0,123,255,0.08)' : 'none',
+            boxShadow: currentSize === option.value ? '0 2px 8px rgba(0,123,255,0.1)' : 'none',
             transition: 'all 0.2s',
             cursor: 'pointer'
           }}
         >
+          {/* Icon for the button */}
           <span
             className="size-icon"
             style={{
@@ -67,10 +74,12 @@ const ImageSizeControl = ({ currentSize, onSizeChange }) => (
           >
             {option.icon}
           </span>
+          {/* Label text for the button */}
           {option.label}
         </button>
       ))}
     </div>
+    {/* Embedded CSS for responsive behavior and hover effects */}
     <style>{`
       @media (max-width: 600px) {
         .image-size-control .size-options {
@@ -86,6 +95,11 @@ const ImageSizeControl = ({ currentSize, onSizeChange }) => (
       }
       .size-option:focus {
         border-color: #0056b3;
+      }
+      /* Added a hover effect for better user experience */
+      .size-option:not(.active):hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: #777;
       }
     `}</style>
   </div>
