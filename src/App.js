@@ -120,7 +120,7 @@ function App() {
   return (
     <div className="App">
       <nav className="navbar">
-        <img src="icons8-gold-bars-100.png" alt="Home"></img>
+        <img src="icons8-gold-bars-100.png" alt="Home"  ></img>
         <h1>Gold Loan Management</h1>
         <div className="nav-buttons">
           <button 
