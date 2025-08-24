@@ -1,0 +1,332 @@
+/* --- Pro-Level UI & Dynamic Experience System --- */
+
+/* 1. Root Variables & Aurora UI Setup
+/* ========================================================================== */
+:root {
+  /* THEME: Light Mode */
+  --accent-blue: #007aff;
+  --accent-green: #34c759;
+  --accent-red: #ff3b30;
+  --accent-gold: #ffcc00;
+
+  --bg-primary: #f4f7f9;
+
+  /* Black, Grey, and Violet Aurora for Light Mode */
+  --aurora-color-1: hsla(260, 50%, 80%, 0.3); /* Soft Violet */
+  --aurora-color-2: hsla(0, 0%, 70%, 0.2);   /* Light Grey */
+  --aurora-color-3: hsla(0, 0%, 50%, 0.2);   /* Mid Grey (for "Black") */
+
+  --surface-bg: rgba(255, 255, 255, 0.6);
+  --surface-bg-opaque: #ffffff;
+  --surface-bg-subtle: rgba(247, 247, 247, 0.7);
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-on-accent: #ffffff;
+
+  --border-color: rgba(0, 0, 0, 0.07);
+  --border-color-strong: #dcdce1;
+  --focus-ring-color: rgba(0, 122, 255, 0.25);
+
+  /* SHARED VARS */
+  --font-family-system: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  --spacing-unit: 8px;
+  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.03);
+  --shadow-md: 0 5px 15px rgba(0,0,0,0.06);
+  --shadow-lg: 0 15px 35px rgba(0,0,0,0.1);
+
+  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* THEME: Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent-blue: #0a84ff;
+    --accent-green: #32d74b;
+    --accent-red: #ff453a;
+    --accent-gold: #ffd60a;
+
+    --bg-primary: #0d0d10;
+
+    /* Black, Grey, and Violet Aurora for Dark Mode */
+    --aurora-color-1: hsla(270, 65%, 55%, 0.25); /* Rich Violet */
+    --aurora-color-2: hsla(0, 0%, 60%, 0.15);    /* Mid Grey */
+    --aurora-color-3: hsla(0, 0%, 20%, 0.2);     /* Dark Grey (for "Black") */
+
+    --surface-bg: rgba(28, 28, 30, 0.6);
+    --surface-bg-opaque: #1c1c1e;
+    --surface-bg-subtle: rgba(44, 44, 46, 0.7);
+
+    --text-primary: #f5f5f7;
+    --text-secondary: #8e8e93;
+
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-color-strong: #3a3a3c;
+    --focus-ring-color: rgba(10, 132, 255, 0.3);
+  }
+}
+
+@keyframes aurora-animation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-system);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  padding: calc(var(--spacing-unit) * 2);
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at 10% 20%, var(--aurora-color-1), transparent 50%),
+              radial-gradient(circle at 80% 30%, var(--aurora-color-2), transparent 50%),
+              radial-gradient(circle at 50% 90%, var(--aurora-color-3), transparent 50%);
+  background-size: 300% 300%;
+  animation: aurora-animation 30s ease infinite;
+  z-index: -1;
+}
+
+
+/* 2. Main Layout & App Navigation
+/* ========================================================================== */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: var(--surface-bg);
+  border-radius: var(--radius-lg);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+}
+
+.navbar h1 {
+  font-size: 1.25rem;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--surface-bg-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.25rem;
+}
+
+.nav-buttons button {
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.nav-buttons button:hover {
+  color: var(--text-primary);
+  background: var(--surface-bg-opaque);
+}
+
+.nav-buttons button.active {
+  background: var(--accent-blue);
+  color: var(--text-on-accent);
+  box-shadow: 0 4px 12px -2px rgba(0, 122, 255, 0.4);
+  transform: scale(1.02);
+}
+
+.notification-badge {
+  background-color: var(--accent-red);
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+/* 3. Cards & Surfaces
+/* ========================================================================== */
+.card, .customer-card, .analytics-card, .customer-form, .modal-content, .historical-entry-form {
+  background: var(--surface-bg);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  transition: var(--transition-smooth);
+  margin-bottom: calc(var(--spacing-unit) * 3);
+  padding: calc(var(--spacing-unit) * 4);
+  position: relative;
+}
+.card:hover, .customer-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-8px);
+}
+
+
+/* 4. Advanced Buttons & Inputs
+/* ========================================================================== */
+.btn, .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-info {
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+.btn::before, .btn-primary::before, .btn-secondary::before, .btn-success::before, .btn-danger::before, .btn-info::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 150px; height: 150px;
+  background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 60%);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.4s ease;
+  z-index: -1;
+}
+.btn:hover::before, .btn-primary:hover::before, .btn-secondary:hover::before, .btn-success::before, .btn-danger:hover::before, .btn-info::before {
+  transform: translate(-50%, -50%) scale(2);
+}
+.btn:hover, .btn-primary:hover, .btn-secondary:hover, .btn-success:hover, .btn-danger:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary { background: var(--accent-blue); color: var(--text-on-accent); }
+.btn-secondary { background: var(--surface-bg-subtle); color: var(--text-primary); border: 1px solid var(--border-color); }
+.btn-success { background: var(--accent-green); color: var(--text-on-accent); }
+.btn-danger { background: var(--accent-red); color: var(--text-on-accent); }
+
+.form-group { position: relative; margin-bottom: calc(var(--spacing-unit) * 3); }
+.form-group label { display: block; margin-bottom: var(--spacing-unit); }
+.form-group.floating label {
+  position: absolute;
+  top: 50%; left: calc(var(--spacing-unit) * 2);
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  background: var(--surface-bg-opaque);
+  padding: 0 4px;
+  transition: var(--transition-fast);
+  pointer-events: none;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  background: var(--surface-bg-opaque);
+  border: 1.5px solid var(--border-color-strong);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  padding: calc(var(--spacing-unit) * 2);
+  transition: var(--transition-fast);
+  box-sizing: border-box;
+}
+.form-group.floating input:focus + label,
+.form-group.floating input:not(:placeholder-shown) + label {
+  top: 0; font-size: 0.8rem; color: var(--accent-blue);
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--focus-ring-color);
+}
+
+
+/* 5. Component-Specific Styles
+/* ========================================================================== */
+
+.analytics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--spacing-unit) * 2; }
+.analytics-card h4 { color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+.analytics-card .analytics-value { font-size: clamp(1.5rem, 4vw, 2.25rem); font-weight: 700; color: var(--text-primary); }
+.analytics-value.positive { color: var(--accent-green); }
+.analytics-value.negative { color: var(--accent-red); }
+
+.report-table { width: 100%; overflow-x: auto; background: var(--surface-bg); padding: var(--spacing-unit) * 2; border-radius: var(--radius-lg); }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border-color); }
+th { font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; letter-spacing: 0.05em; }
+tbody tr { transition: background-color var(--transition-fast); }
+tbody tr:hover { background-color: var(--surface-bg-subtle); }
+td { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
+td:nth-child(5), td:nth-child(7) { color: var(--accent-green); }
+
+.transaction-history { background: var(--surface-bg-subtle); border-radius: var(--radius-lg); padding: var(--spacing-unit) * 3; margin-top: var(--spacing-unit) * 3; }
+.transaction-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.transaction-item:last-child { border: none; }
+.transaction-info { flex-grow: 1; }
+.transaction-type { font-weight: 600; text-transform: capitalize; }
+.transaction-date { font-size: 0.85rem; color: var(--text-secondary); }
+.transaction-amount { font-weight: 700; font-size: 1rem; }
+.transaction-amount[style*="var(--accent-green)"] { color: var(--accent-green); }
+.transaction-amount[style*="var(--accent-red)"] { color: var(--accent-red); }
+
+.image-size-control { padding: var(--spacing-unit) * 2 0; }
+.image-size-control .control-label { font-weight: 600; color: var(--text-secondary); margin-bottom: var(--spacing-unit); }
+.image-size-control .size-options { display: flex; gap: var(--spacing-unit); }
+.image-size-control .size-option {
+    background: var(--surface-bg-opaque);
+    border: 1.5px solid var(--border-color-strong);
+}
+.image-size-control .size-option.active {
+    border-color: var(--accent-blue);
+    background: var(--focus-ring-color);
+    box-shadow: 0 0 0 3px var(--focus-ring-color);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+.modal-content { max-width: 90vw; max-height: 90vh; animation: zoomIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+.thumbnail-strip { display: flex; justify-content: center; gap: var(--spacing-unit); margin-top: var(--spacing-unit) * 2; }
+.thumbnail { width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover; cursor: pointer; border: 2px solid transparent; transition: var(--transition-fast); }
+.thumbnail.active { border-color: var(--accent-blue); transform: scale(1.1); box-shadow: var(--shadow-md); }
+
+
+/* 6. Animations & Responsiveness
+/* ========================================================================== */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.fade-in-up { animation: fadeIn 0.5s ease-out, slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes slideUp { from { transform: translateY(20px); } to { transform: translateY(0); } }
+
+@media (max-width: 768px) {
+  body { padding: var(--spacing-unit); }
+  .form-actions { flex-direction: column; }
+  .form-actions .btn, .form-actions .btn-primary, .form-actions .btn-secondary { width: 100%; }
+} 
