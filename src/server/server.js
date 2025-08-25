@@ -74,14 +74,7 @@ function initializeDatabase() {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
-    `, (err) => {
-        if (err) {
-            console.error('Error creating customers table:', err);
-        } else {
-            console.log('Customers table created/verified successfully');
-        }
-    });
-
+    `);
     db.run(`
         CREATE TABLE IF NOT EXISTS gold_images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,10 +86,7 @@ function initializeDatabase() {
             upload_date TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
         )
-    `, (err) => {
-        if (err) console.error('Error creating gold_images table:', err);
-    });
-
+    `);
     db.run(`
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,10 +97,7 @@ function initializeDatabase() {
             transaction_date TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
         )
-    `, (err) => {
-        if (err) console.error('Error creating transactions table:', err);
-    });
-
+    `);
     db.run(`
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,10 +105,7 @@ function initializeDatabase() {
             timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
             is_read INTEGER DEFAULT 0
         )
-    `, (err) => {
-        if (err) console.error('Error creating notifications table:', err);
-    });
-
+    `);
     console.log('Database tables initialized');
 }
 
@@ -143,10 +127,12 @@ function applyInterestToCustomer(customerId, currentBalance, customerName) {
         }
         const today = new Date();
         const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-        const monthlyInterestRate = 0.015; // 1.5% monthly rate
+        const monthlyInterestRate = 0.015;
         const dailyInterestRate = monthlyInterestRate / daysInMonth;
-        const interestAmount = row.lent_amount * dailyInterestRate;
-        const newBalance = currentBalance + interestAmount;
+        
+        const interestAmount = parseFloat((row.lent_amount * dailyInterestRate).toFixed(2));
+        const newBalance = parseFloat((currentBalance + interestAmount).toFixed(2));
+
         db.run('UPDATE customers SET current_balance = ?, last_interest_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [newBalance, today.toISOString(), customerId], (err) => {
             if (err) return console.error('Error updating customer balance:', err);
             db.run('INSERT INTO transactions (customer_id, transaction_type, amount, description) VALUES (?, ?, ?, ?)', [customerId, 'interest', interestAmount, `Daily interest (1.5%/month) applied`], err => {
@@ -176,11 +162,6 @@ function startAutomaticInterestScheduler() {
                 const lastInterestDateOnly = customer.last_interest_date ? new Date(customer.last_interest_date) : new Date(customer.lent_date);
                 lastInterestDateOnly.setHours(0, 0, 0, 0);
                 if (lastInterestDateOnly < today) {
-                    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-                    const monthlyInterestRate = 0.015;
-                    const dailyInterestRate = monthlyInterestRate / daysInMonth;
-                    const interestAmount = customer.lent_amount * dailyInterestRate;
-                    const newBalance = customer.current_balance + interestAmount;
                     applyInterestToCustomer(customer.id, customer.current_balance, customer.name);
                     processedCount++;
                 }
@@ -333,8 +314,6 @@ app.post('/api/customers', (req, res) => {
         lentDate, transactions, lastInterestDate, currentBalance
     } = req.body;
 
-    console.log('Adding new customer:', { name, email, goldWeight, lentAmount, lentDate });
-
     const finalCurrentBalance = currentBalance || parseFloat(lentAmount);
     const actualLentDate = lentDate || new Date().toISOString().split('T')[0];
 
@@ -348,13 +327,10 @@ app.post('/api/customers', (req, res) => {
             [name, email, phone, address || '', idType, idNumber, goldWeight, goldRate || 0, lentAmount, finalCurrentBalance, targetAmount || 0, actualLentDate, lastInterestDate || null],
             function(err) {
                 if (err) {
-                    console.error('Error inserting customer:', err);
                     db.run('ROLLBACK');
-                    res.status(500).json({ error: err.message });
-                    return;
+                    return res.status(500).json({ error: err.message });
                 }
                 const customerId = this.lastID;
-                console.log('Customer inserted with ID:', customerId);
 
                 if (goldImages && goldImages.length > 0) {
                     let imagePromises = goldImages.map(image => {
@@ -364,28 +340,17 @@ app.post('/api/customers', (req, res) => {
                                 db.run(
                                     'INSERT INTO gold_images (customer_id, image_name, image_data, image_size, image_type) VALUES (?, ?, ?, ?, ?)',
                                     [customerId, image.name, imageBuffer, image.size, image.type],
-                                    function(err) {
-                                        if (err) {
-                                            console.error('Error inserting image:', err);
-                                            reject(err);
-                                        } else {
-                                            resolve();
-                                        }
-                                    }
+                                    (err) => err ? reject(err) : resolve()
                                 );
                             } catch (error) {
-                                console.error('Error processing image:', error);
                                 reject(error);
                             }
                         });
                     });
 
                     Promise.all(imagePromises)
-                        .then(() => {
-                            insertTransactions(customerId, transactions || []);
-                        })
+                        .then(() => insertTransactions(customerId, transactions || []))
                         .catch(err => {
-                            console.error('Error in image processing:', err);
                             db.run('ROLLBACK');
                             res.status(500).json({ error: err.message });
                         });
@@ -400,24 +365,14 @@ app.post('/api/customers', (req, res) => {
                                 db.run(
                                     'INSERT INTO transactions (customer_id, transaction_type, amount, description, transaction_date) VALUES (?, ?, ?, ?, ?)',
                                     [customerId, transaction.type, transaction.amount, transaction.description, transaction.date],
-                                    function(err) {
-                                        if (err) {
-                                            console.error('Error inserting transaction:', err);
-                                            reject(err);
-                                        } else {
-                                            resolve();
-                                        }
-                                    }
+                                    (err) => err ? reject(err) : resolve()
                                 );
                             });
                         });
 
                         Promise.all(transactionPromises)
-                            .then(() => {
-                                finalizeCustomerAddition();
-                            })
+                            .then(finalizeCustomerAddition)
                             .catch(err => {
-                                console.error('Error in transaction processing:', err);
                                 db.run('ROLLBACK');
                                 res.status(500).json({ error: err.message });
                             });
@@ -425,12 +380,10 @@ app.post('/api/customers', (req, res) => {
                         db.run(
                             'INSERT INTO transactions (customer_id, transaction_type, amount, description) VALUES (?, ?, ?, ?)',
                             [customerId, 'gold_loan', lentAmount, `Money lent against ${goldWeight}g gold @ ₹${goldRate || 0}/g`],
-                            function(err) {
+                            (err) => {
                                 if (err) {
-                                    console.error('Error inserting initial transaction:', err);
                                     db.run('ROLLBACK');
-                                    res.status(500).json({ error: err.message });
-                                    return;
+                                    return res.status(500).json({ error: err.message });
                                 }
                                 finalizeCustomerAddition();
                             }
@@ -441,7 +394,6 @@ app.post('/api/customers', (req, res) => {
                 function finalizeCustomerAddition() {
                     db.run('COMMIT', (err) => {
                         if (err) {
-                            console.error('Error committing transaction:', err);
                             res.status(500).json({ error: err.message });
                         } else {
                             addNotification(`New customer ${name} added - ₹${lentAmount.toLocaleString()} lent against ${goldWeight}g gold`);
@@ -454,43 +406,55 @@ app.post('/api/customers', (req, res) => {
     });
 });
 
+// ========================= THE DEFINITIVE FIX =========================
+// This route now cleans ALL incoming balance updates, solving the problem at the source.
 app.put('/api/customers/:id', (req, res) => {
     const customerId = req.params.id;
-    const { currentBalance, lastInterestDate } = req.body;
+    let { currentBalance, lastInterestDate } = req.body;
 
-    console.log('Updating customer:', customerId, { currentBalance, lastInterestDate });
+    // First, validate that currentBalance is a number
+    let balance = parseFloat(currentBalance);
+    if (isNaN(balance)) {
+        return res.status(400).json({ error: 'Invalid currentBalance provided.' });
+    }
+
+    const EPSILON = 0.01; // Our threshold for "zero"
+
+    // Check if the balance is negligibly close to zero
+    if (Math.abs(balance) < EPSILON) {
+        balance = 0; // Force it to be exactly 0
+    } else {
+        // If it's not close to zero, round it to 2 decimal places anyway
+        balance = parseFloat(balance.toFixed(2));
+    }
+
+    console.log(`Updating customer ${customerId}: Cleaned Balance = ${balance}`);
 
     db.run(
         'UPDATE customers SET current_balance = ?, last_interest_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [currentBalance, lastInterestDate, customerId],
+        [balance, lastInterestDate, customerId],
         function(err) {
             if (err) {
                 console.error('Error updating customer:', err);
-                res.status(500).json({ error: err.message });
-                return;
+                return res.status(500).json({ error: err.message });
             }
-            console.log('Customer updated successfully');
             res.json({ message: 'Customer updated successfully' });
         }
     );
 });
+// ========================== END OF FIX ==========================
 
 app.post('/api/customers/:id/transactions', (req, res) => {
     const customerId = req.params.id;
     const { type, amount, description } = req.body;
-
-    console.log('Adding transaction:', { customerId, type, amount, description });
 
     db.run(
         'INSERT INTO transactions (customer_id, transaction_type, amount, description) VALUES (?, ?, ?, ?)',
         [customerId, type, amount, description],
         function(err) {
             if (err) {
-                console.error('Error adding transaction:', err);
-                res.status(500).json({ error: err.message });
-                return;
+                return res.status(500).json({ error: err.message });
             }
-            console.log('Transaction added successfully');
             res.json({ id: this.lastID, message: 'Transaction added successfully' });
         }
     );
@@ -499,40 +463,24 @@ app.post('/api/customers/:id/transactions', (req, res) => {
 app.delete('/api/customers/:id', (req, res) => {
     const customerId = req.params.id;
 
-    db.get(
-        'SELECT current_balance FROM customers WHERE id = ?',
-        [customerId],
-        (err, row) => {
-            if (err) {
-                console.error('Error checking customer balance:', err);
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            if (!row) {
-                res.status(404).json({ error: 'Customer not found' });
-                return;
-            }
-            const balanceThreshold = 0.01;
-            if (Math.abs(row.current_balance) > balanceThreshold) {
-                res.status(400).json({
-                    error: `Cannot delete customer with outstanding balance: ₹${row.current_balance.toFixed(2)}`
-                });
-                return;
-            }
-            db.run('DELETE FROM customers WHERE id = ?', [customerId], function(err) {
-                if (err) {
-                    console.error('Error deleting customer:', err);
-                    res.status(500).json({ error: err.message });
-                    return;
-                }
-                addNotification(`Customer account deleted (Final balance: ₹${row.current_balance.toFixed(2)})`);
-                res.json({ message: 'Customer deleted successfully' });
+    db.get('SELECT current_balance FROM customers WHERE id = ?', [customerId], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Customer not found' });
+            
+        const balanceThreshold = 0.01;
+        if (Math.abs(row.current_balance) > balanceThreshold) {
+            return res.status(400).json({
+                error: `Cannot delete customer with outstanding balance: ₹${row.current_balance.toFixed(2)}`
             });
         }
-    );
+        db.run('DELETE FROM customers WHERE id = ?', [customerId], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            addNotification(`Customer account deleted (Final balance: ₹${row.current_balance.toFixed(2)})`);
+            res.json({ message: 'Customer deleted successfully' });
+        });
+    });
 });
 
-// FIXED: Simple interest calculation for manual application (now daily, not monthly)
 app.post('/api/customers/apply-interest', (req, res) => {
     const currentDate = new Date();
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
@@ -542,50 +490,29 @@ app.post('/api/customers/apply-interest', (req, res) => {
         'SELECT id, name, current_balance, lent_date, last_interest_date FROM customers WHERE account_status = "active" AND current_balance > 0',
         [],
         (err, customers) => {
-            if (err) {
-                console.error('Error fetching customers for interest:', err);
-                res.status(500).json({ error: err.message });
-                return;
-            }
+            if (err) return res.status(500).json({ error: err.message });
 
             const eligibleCustomers = customers.filter(customer =>
                 isCustomerDueForInterest(customer.lent_date, customer.last_interest_date)
             );
 
-            console.log(`Applying interest to ${eligibleCustomers.length} eligible customers`);
-
             const updatePromises = eligibleCustomers.map(customer => {
                 return new Promise((resolve, reject) => {
                     db.get('SELECT lent_amount FROM customers WHERE id = ?', [customer.id], (err, row) => {
-                        if (err || !row) {
-                            reject(err);
-                            return;
-                        }
+                        if (err || !row) return reject(err);
 
-                        const interestAmount = row.lent_amount * dailyInterestRate; // Daily simple interest on principal
-                        const newBalance = customer.current_balance + interestAmount;
+                        const interestAmount = parseFloat((row.lent_amount * dailyInterestRate).toFixed(2));
+                        const newBalance = parseFloat((customer.current_balance + interestAmount).toFixed(2));
 
                         db.run(
                             'UPDATE customers SET current_balance = ?, last_interest_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                             [newBalance, currentDate.toISOString(), customer.id],
-                            function(err) {
-                                if (err) {
-                                    console.error('Error updating customer balance:', err);
-                                    reject(err);
-                                    return;
-                                }
-
+                            (err) => {
+                                if (err) return reject(err);
                                 db.run(
                                     'INSERT INTO transactions (customer_id, transaction_type, amount, description) VALUES (?, ?, ?, ?)',
                                     [customer.id, 'interest', interestAmount, `Daily interest (1.5%/month) applied`],
-                                    function(err) {
-                                        if (err) {
-                                            console.error('Error adding interest transaction:', err);
-                                            reject(err);
-                                        } else {
-                                            resolve();
-                                        }
-                                    }
+                                    (err) => err ? reject(err) : resolve()
                                 );
                             }
                         );
@@ -599,7 +526,6 @@ app.post('/api/customers/apply-interest', (req, res) => {
                     res.json({ message: `Interest applied to ${eligibleCustomers.length} customers (daily)` });
                 })
                 .catch(err => {
-                    console.error('Error applying interest:', err);
                     res.status(500).json({ error: err.message });
                 });
         }
@@ -607,33 +533,21 @@ app.post('/api/customers/apply-interest', (req, res) => {
 });
 
 app.get('/api/notifications', (req, res) => {
-    db.all(
-        'SELECT * FROM notifications ORDER BY timestamp DESC LIMIT 50',
-        [],
-        (err, rows) => {
-            if (err) {
-                console.error('Error fetching notifications:', err);
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            const notifications = rows.map(row => ({
-                id: row.id,
-                message: row.message,
-                timestamp: row.timestamp,
-                read: row.is_read === 1
-            }));
-            res.json(notifications);
-        }
-    );
+    db.all('SELECT * FROM notifications ORDER BY timestamp DESC LIMIT 50', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const notifications = rows.map(row => ({
+            id: row.id,
+            message: row.message,
+            timestamp: row.timestamp,
+            read: row.is_read === 1
+        }));
+        res.json(notifications);
+    });
 });
 
 app.delete('/api/notifications', (req, res) => {
     db.run('DELETE FROM notifications', [], function(err) {
-        if (err) {
-            console.error('Error clearing notifications:', err);
-            res.status(500).json({ error: err.message });
-            return;
-        }
+        if (err) return res.status(500).json({ error: err.message });
         res.json({ message: 'Notifications cleared' });
     });
 });
@@ -642,16 +556,12 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Financial App API Server running on port ${PORT} (API Only Mode)`);
     console.log(`📱 Local API access: http://localhost:${PORT}`);
     console.log(`🌐 Network API access: http://${LOCAL_IP}:${PORT}`);
-    console.log(`🔗 Share this API URL with other devices: http://${LOCAL_IP}:${PORT}`);
-    console.log(`📋 API Documentation: http://${LOCAL_IP}:${PORT}/`);
     startAutomaticInterestScheduler();
 });
 
 process.on('SIGINT', () => {
     db.close((err) => {
-        if (err) {
-            console.error(err.message);
-        }
+        if (err) console.error(err.message);
         console.log('Database connection closed.');
         process.exit(0);
     });
